@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notenwerte und Pausen – zwei 4/4-Takte</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 18px;
+      font-family: Arial, sans-serif;
+      color: #1f2937;
+      background: linear-gradient(135deg, #e0f2fe, #fef3c7);
+    }
+
+    .app {
+      max-width: 1150px;
+      margin: auto;
+      padding: 26px;
+      border-radius: 22px;
+      background: white;
+      box-shadow: 0 12px 35px #0002;
+    }
+
+    h1 { color: #1d4ed8; }
+    h2 { margin-top: 26px; color: #1e40af; }
+    p { font-size: 1.05rem; line-height: 1.55; }
+
+    .intro, .help, .legend {
+      padding: 14px;
+      border-radius: 12px;
+      background: #eff6ff;
+    }
+
+    .legend {
+      margin: 14px 0;
+      border-left: 5px solid #2563eb;
+      line-height: 1.6;
+    }
+
+    .group-title {
+      margin: 18px 0 9px;
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      gap: 10px;
+    }
+
+    .card {
+      min-height: 118px;
+      padding: 10px 7px;
+      border: 3px solid;
+      border-radius: 14px;
+      text-align: center;
+      cursor: grab;
+      user-select: none;
+      transition: transform .15s;
+    }
+
+    .card:hover { transform: translateY(-3px); }
+    .card:active { cursor: grabbing; }
+    .card.note { border-color: #2563eb; background: #eff6ff; }
+    .card.rest { border-color: #16a34a; background: #f0fdf4; }
+
+    .icon {
+      display: flex;
+      height: 55px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .icon svg { width: 50px; height: 54px; }
+    .card-name { display: block; font-weight: bold; }
+    .duration { display: block; margin-top: 4px; font-size: .9rem; }
+
+    .board-wrap { overflow-x: auto; padding: 10px 2px 18px; }
+
+    .board {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(16, minmax(38px, 1fr));
+      min-width: 900px;
+      min-height: 170px;
+      border: 4px solid #111827;
+      border-radius: 9px;
+      background: white;
+    }
+
+    .slot {
+      position: relative;
+      min-height: 166px;
+      border-right: 1px solid #d1d5db;
+    }
+
+    .slot.beat-start { border-left: 2px solid #475569; }
+    .slot.bar-start { border-left: 5px solid #111827; }
+    .slot.dragover { background: #dcfce7; }
+
+    .count {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: #1f2937;
+      color: white;
+      font-size: .8rem;
+      font-weight: bold;
+    }
+
+    .count.plus {
+      width: 23px;
+      height: 23px;
+      background: #94a3b8;
+      font-size: .72rem;
+    }
+
+    .bar-label {
+      position: absolute;
+      top: -27px;
+      left: 5px;
+      color: #334155;
+      font-size: .85rem;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .placed {
+      position: absolute;
+      top: 58px;
+      z-index: 5;
+      height: 88px;
+      padding: 3px;
+      overflow: hidden;
+      border: 2px solid #2563eb;
+      border-radius: 10px;
+      background: #eff6ff;
+      color: #1e3a8a;
+      cursor: pointer;
+    }
+
+    .placed.rest-item {
+      border-color: #16a34a;
+      background: #f0fdf4;
+      color: #166534;
+    }
+
+    .placed svg {
+      display: block;
+      width: 40px;
+      height: 43px;
+      margin: 0 auto;
+    }
+
+    .placed-name {
+      display: block;
+      overflow: hidden;
+      font-size: .72rem;
+      font-weight: bold;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .status {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 12px;
+      background: #f3f4f6;
+      font-weight: bold;
+      line-height: 1.5;
+    }
+
+    .status.good { background: #dcfce7; color: #166534; }
+    .status.error { background: #fee2e2; color: #991b1b; }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .controls button {
+      padding: 12px 17px;
+      border: 0;
+      border-radius: 10px;
+      background: #2563eb;
+      color: white;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .controls button:hover { filter: brightness(1.1); }
+    #exampleButton { background: #16a34a; }
+    #clearButton { background: #64748b; }
+    #stopButton { background: #dc2626; }
+
+    .help { margin-top: 24px; background: #f8fafc; }
+    .help ul { padding-left: 22px; line-height: 1.7; }
+
+    @media (max-width: 760px) {
+      body { padding: 9px; }
+      .app { padding: 17px; }
+      .cards { grid-template-columns: repeat(2, minmax(125px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>Notenwerte und Pausen</h1>
+
+    <p class="intro">
+      Baue zwei Takte aus Noten und Pausen. Ziehe eine Karte auf ein freies
+      Feld oder klicke sie an. Jedes Feld entspricht einer halben Zählzeit.
+    </p>
+
+    <div class="legend">
+      <strong>Zählhilfe:</strong> In jedem Takt kannst du
+      <strong>1 + 2 + 3 + 4 +</strong> zählen.
+      <strong>Tempo: 80 Schläge pro Minute.</strong>
+    </div>
+
+    <h2>Noten auswählen</h2>
+    <div class="group-title">Notenwerte</div>
+    <section class="cards" id="noteCards" aria-label="Notenwerte"></section>
+
+    <div class="group-title">Pausenwerte</div>
+    <section class="cards" id="restCards" aria-label="Pausenwerte"></section>
+
+    <h2>Deine zwei 4/4-Takte</h2>
+    <p>
+      Jede Zahl und jedes Pluszeichen ist ein Feld. Die dicke Linie trennt
+      den ersten und den zweiten Takt.
+    </p>
+
+    <div class="board-wrap">
+      <section class="board" id="board" aria-label="Zwei 4/4-Takte"></section>
+    </div>
+
+    <div class="status" id="status" aria-live="polite">
+      Los geht's! Setze Noten und Pausen in die beiden Takte.
+    </div>
+
+    <div class="controls">
+      <button id="exampleButton">Beispiel zeigen</button>
+      <button id="clearButton">Alles leeren</button>
+      <button id="playButton">▶ Abspielen</button>
+      <button id="stopButton">■ Stop</button>
+      <button id="checkButton">Takte prüfen</button>
+    </div>
+
+    <section class="help">
+      <h2>So lange dauern die Werte</h2>
+      <ul>
+        <li>Achtelnote oder Achtelpause: ein Feld</li>
+        <li>Viertelnote oder Viertelpause: zwei Felder</li>
+        <li>Punktierter Viertelwert: drei Felder</li>
+        <li>Halbe Note oder halbe Pause: vier Felder</li>
+        <li>Punktierter halber Wert: sechs Felder</li>
+        <li>Ganze Note oder ganze Pause: acht Felder</li>
+      </ul>
+      <p>
+        Eine Punktierung verlängert einen Wert um die Hälfte seiner Dauer.
+        Es gibt keine punktierten Achtel- oder ganzen Werte. Klicke auf ein
+        eingesetztes Zeichen, um es wieder zu entfernen.
+      </p>
+      <p>
+        Beim Abspielen erklingen Noten als gleich hoher Ton. Pausen bleiben
+        still, behalten aber ihre Dauer bei.
+      </p>
+    </section>
+  </main>
+
+  <script>
+    const TEMPO_BPM = 80;
+    const TOTAL_SLOTS = 16;
+    const SLOTS_PER_BAR = 8;
+    const SECONDS_PER_HALF_BEAT = 60 / TEMPO_BPM / 2;
+
+    const items = [
+      { id: "eighth", kind: "note", name: "Achtelnote", beats: 0.5, base: "eighth", dotted: false },
+      { id: "quarter", kind: "note", name: "Viertelnote", beats: 1, base: "quarter", dotted: false },
+      { id: "dotted-quarter", kind: "note", name: "Punktierte Viertelnote", beats: 1.5, base: "quarter", dotted: true },
+      { id: "half", kind: "note", name: "Halbe Note", beats: 2, base: "half", dotted: false },
+      { id: "dotted-half", kind: "note", name: "Punktierte halbe Note", beats: 3, base: "half", dotted: true },
+      { id: "whole", kind: "note", name: "Ganze Note", beats: 4, base: "whole", dotted: false },
+
+      { id: "eighth-rest", kind: "rest", name: "Achtelpause", beats: 0.5, base: "eighth", dotted: false },
+      { id: "quarter-rest", kind: "rest", name: "Viertelpause", beats: 1, base: "quarter", dotted: false },
+      { id: "dotted-quarter-rest", kind: "rest", name: "Punktierte Viertelpause", beats: 1.5, base: "quarter", dotted: true },
+      { id: "half-rest", kind: "rest", name: "Halbe Pause", beats: 2, base: "half", dotted: false },
+      { id: "dotted-half-rest", kind: "rest", name: "Punktierte halbe Pause", beats: 3, base: "half", dotted: true },
+      { id: "whole-rest", kind: "rest", name: "Ganze Pause", beats: 4, base: "whole", dotted: false }
+    ];
+
+    const board = document.getElementById("board");
+    const statusBox = document.getElementById("status");
+    let draggedItem = null;
+    let audioContext = null;
+    let activeOscillators = [];
+    let playbackTimer = null;
+
+    function noteSvg(base, dotted) {
+      const openHead = base === "half" || base === "whole";
+      const head = `<ellipse cx="23" cy="45" rx="11" ry="7"
+        transform="rotate(-25 23 45)"
+        fill="${openHead ? "white" : "black"}"
+        stroke="black" stroke-width="3"/>`;
+      const stem = base === "whole"
+        ? ""
+        : `<path d="M33 42 V8" stroke="black" stroke-width="3"/>`;
+      const flag = base === "eighth"
+        ? `<path d="M34 9 C54 15 48 26 37 31 C49 21 43 17 34 15"
+             fill="black" stroke="black" stroke-width="1"/>`
+        : "";
+      const dot = dotted
+        ? `<circle cx="51" cy="43" r="3.5" fill="black"/>`
+        : "";
+
+      return `<svg viewBox="0 0 62 60" role="img" aria-label="Notensymbol">
+        ${stem}${head}${flag}${dot}</svg>`;
+    }
+
+    function restSvg(base, dotted) {
+      let shape = "";
+
+      if (base === "whole") {
+        shape = `<path d="M18 24 H43 V34 H18 Z" fill="black"/>`;
+      } else if (base === "half") {
+        shape = `<path d="M18 31 H43 V41 H18 Z" fill="black"/>`;
+      } else if (base === "quarter") {
+        shape = `<path d="M35 8 L24 22 L34 29 L23 42 L31 49"
+          fill="none" stroke="black" stroke-width="6" stroke-linecap="round"
+          stroke-linejoin="round"/>`;
+      } else {
+        shape = `<circle cx="35" cy="12" r="5" fill="black"/>
+          <path d="M34 17 C31 26 25 30 22 38 C19 45 25 49 31 44
+          C26 45 24 41 28 36 C33 29 39 26 38 19"
+          fill="black" stroke="black" stroke-width="2"/>`;
+      }
+
+      const dot = dotted
+        ? `<circle cx="50" cy="37" r="3.5" fill="black"/>`
+        : "";
+
+      return `<svg viewBox="0 0 62 60" role="img" aria-label="Pausenzeichen">
+        ${shape}${dot}</svg>`;
+    }
+
+    function iconFor(item) {
+      return item.kind === "note"
+        ? noteSvg(item.base, item.dotted)
+        : restSvg(item.base, item.dotted);
+    }
+
+    function makeCard(item) {
+      const card = document.createElement("div");
+      card.className = `card ${item.kind}`;
+      card.draggable = true;
+      card.innerHTML = `
+        <span class="icon">${iconFor(item)}</span>
+        <span class="card-name">${item.name}</span>
+        <span class="duration">${item.beats} ${item.beats === 1 ? "Zählzeit" : "Zählzeiten"}</span>`;
+
+      card.addEventListener("dragstart", event => {
+        draggedItem = item;
+        event.dataTransfer.setData("text/plain", item.id);
+      });
+
+      card.addEventListener("click", () => {
+        const start = findFirstFree(item.beats * 2);
+        if (start < 0) {
+          showStatus("Es ist kein passender freier Platz mehr da. Entferne zuerst ein Zeichen.", "error");
+        } else {
+          placeItem(start, item);
+        }
+      });
+
+      return card;
+    }
+
+    items.filter(item => item.kind === "note").forEach(item => {
+      document.getElementById("noteCards").appendChild(makeCard(item));
+    });
+
+    items.filter(item => item.kind === "rest").forEach(item => {
+      document.getElementById("restCards").appendChild(makeCard(item));
+    });
+
+    for (let index = 0; index < TOTAL_SLOTS; index++) {
+      const slot = document.createElement("div");
+      slot.className = "slot";
+      slot.dataset.index = String(index);
+
+      const withinBar = index % SLOTS_PER_BAR;
+      const withinBeat = withinBar % 2;
+
+      if (index === 0 || index === SLOTS_PER_BAR) {
+        slot.classList.add("bar-start");
+      } else if (withinBeat === 0) {
+        slot.classList.add("beat-start");
+      }
+
+      if (withinBeat === 0) {
+        slot.innerHTML = `<span class="count">${Math.floor(withinBar / 2) + 1}</span>`;
+      } else {
+        slot.innerHTML = `<span class="count plus">+</span>`;
+      }
+
+      if (index === 0) {
+        slot.insertAdjacentHTML("beforeend", `<span class="bar-label">Takt 1</span>`);
+      }
+      if (index === SLOTS_PER_BAR) {
+        slot.insertAdjacentHTML("beforeend", `<span class="bar-label">Takt 2</span>`);
+      }
+
+      slot.addEventListener("dragover", event => {
+        event.preventDefault();
+        slot.classList.add("dragover");
+      });
+
+      slot.addEventListener("dragleave", () => {
+        slot.classList.remove("dragover");
+      });
+
+      slot.addEventListener("drop", event => {
+        event.preventDefault();
+        slot.classList.remove("dragover");
+        if (draggedItem) placeItem(index, draggedItem);
+      });
+
+      board.appendChild(slot);
+    }
+
+    function placedItems() {
+      return [...board.querySelectorAll(".placed")];
+    }
+
+    function rangeFree(start, length) {
+      const end = start + length;
+      return placedItems().every(element => {
+        const otherStart = Number(element.dataset.start);
+        const otherEnd = otherStart + Number(element.dataset.length);
+        return end <= otherStart || start >= otherEnd;
+      });
+    }
+
+    function staysInsideOneBar(start, length) {
+      const firstBar = Math.floor(start / SLOTS_PER_BAR);
+      const lastBar = Math.floor((start + length - 1) / SLOTS_PER_BAR);
+      return firstBar === lastBar;
+    }
+
+    function placeItem(start, item) {
+      stopSequence(false);
+
+      const length = item.beats * 2;
+
+      if (start + length > TOTAL_SLOTS) {
+        showStatus("Dieses Zeichen würde über das Ende der beiden Takte hinausreichen.", "error");
+        return;
+      }
+
+      if (!staysInsideOneBar(start, length)) {
+        showStatus("Setze den Notenwert vollständig in einen einzelnen Takt.", "error");
+        return;
+      }
+
+      if (!rangeFree(start, length)) {
+        showStatus("Diese Felder sind schon belegt. Probiere eine andere Stelle.", "error");
+        return;
+      }
+
+      const placed = document.createElement("button");
+      placed.type = "button";
+      placed.className = `placed ${item.kind === "rest" ? "rest-item" : ""}`;
+      placed.dataset.start = String(start);
+      placed.dataset.length = String(length);
+      placed.dataset.kind = item.kind;
+      placed.style.left = `${start / TOTAL_SLOTS * 100}%`;
+      placed.style.width = `calc(${length / TOTAL_SLOTS * 100}% - 4px)`;
+      placed.setAttribute("aria-label", `${item.name} entfernen`);
+      placed.innerHTML = `${iconFor(item)}<span class="placed-name">${item.name}</span>`;
+
+      placed.addEventListener("click", () => {
+        stopSequence(false);
+        placed.remove();
+        updateStatus();
+      });
+
+      board.appendChild(placed);
+      updateStatus();
+    }
+
+    function findFirstFree(length) {
+      for (let start = 0; start <= TOTAL_SLOTS - length; start++) {
+        if (staysInsideOneBar(start, length) && rangeFree(start, length)) {
+          return start;
+        }
+      }
+      return -1;
+    }
+
+    function usedUnits() {
+      return placedItems().reduce(
+        (sum, element) => sum + Number(element.dataset.length), 0
+      );
+    }
+
+    function updateStatus() {
+      const used = usedUnits();
+
+      if (used === 0) {
+        showStatus("Los geht's! Setze Noten und Pausen in die beiden Takte.");
+      } else if (used < TOTAL_SLOTS) {
+        showStatus(`Gut gemacht! Es sind noch ${TOTAL_SLOTS - used} halbe Zählzeiten frei.`);
+      } else {
+        showStatus("Prima! Beide 4/4-Takte sind vollständig gefüllt.", "good");
+      }
+    }
+
+    function showStatus(message, type = "") {
+      statusBox.textContent = message;
+      statusBox.className = "status";
+      if (type) statusBox.classList.add(type);
+    }
+
+    async function playSequence() {
+      stopSequence(false);
+
+      const sequence = placedItems().sort(
+        (a, b) => Number(a.dataset.start) - Number(b.dataset.start)
+      );
+
+      if (sequence.length === 0) {
+        showStatus("Setze zuerst Noten oder Pausen in die Takte.", "error");
+        return;
+      }
+
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+
+      if (!AudioContextClass) {
+        showStatus("Dein Browser unterstützt die Audio-Wiedergabe nicht.", "error");
+        return;
+      }
+
+      try {
+        audioContext ||= new AudioContextClass();
+        await audioContext.resume();
+
+        const startTime = audioContext.currentTime + 0.08;
+
+        sequence.forEach(element => {
+          if (element.dataset.kind !== "note") return;
+
+          const start = Number(element.dataset.start);
+          const length = Number(element.dataset.length);
+          const noteStart = startTime + start * SECONDS_PER_HALF_BEAT;
+          const noteEnd = noteStart + length * SECONDS_PER_HALF_BEAT;
+
+          const oscillator = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+
+          oscillator.type = "sine";
+          oscillator.frequency.value = 440;
+
+          gain.gain.setValueAtTime(0, noteStart);
+          gain.gain.linearRampToValueAtTime(0.14, noteStart + 0.02);
+          gain.gain.setValueAtTime(0.14, Math.max(noteStart + 0.02, noteEnd - 0.03));
+          gain.gain.linearRampToValueAtTime(0, noteEnd);
+
+          oscillator.connect(gain);
+          gain.connect(audioContext.destination);
+          oscillator.start(noteStart);
+          oscillator.stop(noteEnd);
+
+          activeOscillators.push(oscillator);
+        });
+
+        showStatus("Wiedergabe läuft mit 80 Schlägen pro Minute. Pausen bleiben still.");
+
+        const totalDurationMs =
+          (TOTAL_SLOTS * SECONDS_PER_HALF_BEAT + 0.15) * 1000;
+
+        playbackTimer = window.setTimeout(() => {
+          activeOscillators = [];
+          playbackTimer = null;
+          showStatus("Wiedergabe beendet.");
+        }, totalDurationMs);
+      } catch (error) {
+        stopSequence(false);
+        showStatus("Die Audio-Wiedergabe konnte nicht gestartet werden.", "error");
+      }
+    }
+
+    function stopSequence(updateMessage = true) {
+      if (playbackTimer) {
+        window.clearTimeout(playbackTimer);
+        playbackTimer = null;
+      }
+
+      activeOscillators.forEach(oscillator => {
+        try {
+          oscillator.stop();
+        } catch (error) {
+          // Der Ton war bereits beendet.
+        }
+      });
+
+      activeOscillators = [];
+
+      if (updateMessage) {
+        showStatus("Wiedergabe gestoppt.");
+      }
+    }
+
+    document.getElementById("clearButton").addEventListener("click", () => {
+      stopSequence(false);
+      placedItems().forEach(element => element.remove());
+      updateStatus();
+    });
+
+    document.getElementById("exampleButton").addEventListener("click", () => {
+      stopSequence(false);
+      placedItems().forEach(element => element.remove());
+
+      placeItem(0, items.find(item => item.id === "dotted-quarter"));
+      placeItem(3, items.find(item => item.id === "eighth"));
+      placeItem(4, items.find(item => item.id === "half"));
+      placeItem(8, items.find(item => item.id === "quarter-rest"));
+      placeItem(10, items.find(item => item.id === "dotted-half"));
+      showStatus("Beispiel geladen. Klicke auf „Abspielen“, um es anzuhören.");
+    });
+
+    document.getElementById("playButton").addEventListener("click", playSequence);
+    document.getElementById("stopButton").addEventListener("click", () => stopSequence());
+
+    document.getElementById("checkButton").addEventListener("click", () => {
+      const used = usedUnits();
+
+      if (used === TOTAL_SLOTS) {
+        showStatus("Richtig! Noten und Pausen füllen genau zwei 4/4-Takte.", "good");
+      } else {
+        showStatus(
+          `Noch nicht ganz: ${used} von ${TOTAL_SLOTS} halben Zählzeiten sind belegt.`,
+          "error"
+        );
+      }
+    });
+  </script>
+</body>
+</html>
